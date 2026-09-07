@@ -18,15 +18,23 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import NM from 'gi://NM';
-import Shell from 'gi://Shell';
 import St from 'gi://St';
 
+import * as Config from 'resource:///org/gnome/shell/misc/config.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {Extension, gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 const SYS_NET = '/sys/class/net';
+
+const [SHELL_MAJOR] = Config.PACKAGE_VERSION.split('.').map(part => Number(part));
+
+/** GNOME 48 replaced St.BoxLayout's `vertical` property with `orientation`;
+ *  46 and 47 only have the former, so pick what this shell understands. */
+const VERTICAL = SHELL_MAJOR >= 48
+    ? {orientation: Clutter.Orientation.VERTICAL}
+    : {vertical: true};
 
 /* ------------------------------------------------------------------ *
  * sysfs helpers - the authoritative list of physical interfaces
@@ -276,7 +284,7 @@ class NetDevInfoIndicator extends PanelMenu.Button {
         const item = new PopupMenu.PopupBaseMenuItem({style_class: 'gnome-net-dev-info-item'});
 
         const box = new St.BoxLayout({
-            orientation: Clutter.Orientation.VERTICAL,
+            ...VERTICAL,
             x_expand: true,
         });
 
@@ -301,7 +309,7 @@ class NetDevInfoIndicator extends PanelMenu.Button {
         box.add_child(header);
 
         const details = new St.BoxLayout({
-            orientation: Clutter.Orientation.VERTICAL,
+            ...VERTICAL,
             style_class: 'gnome-net-dev-info-details',
         });
 
@@ -385,20 +393,32 @@ class NetDevInfoIndicator extends PanelMenu.Button {
         });
     }
 
-    /** Activate the Settings app's network panel the same way GNOME Shell's own
-     *  network menu does - no binary is spawned. */
+    /** Ask the Settings app to open its network panel, the way GNOME Shell's own
+     *  network menu does it - no binary is spawned, and org.freedesktop.Application
+     *  is the same on every shell version this extension supports. */
     _openNetworkSettings() {
-        const app = Shell.AppSystem.get_default()
-            .lookup_app('org.gnome.Settings.desktop');
-        if (!app) {
-            console.debug('Net Device Info: GNOME Settings is not installed');
-            return;
-        }
+        const param = new GLib.Variant('(sav)', ['network', []]);
+        const platformData = {
+            'desktop-startup-id': new GLib.Variant('s',
+                `_TIME${global.get_current_time()}`),
+        };
 
-        const param = new GLib.Variant('av',
-            [new GLib.Variant('(sav)', ['network', []])]);
-        app.activate_action('launch-panel', param, 0, -1, null).catch(
-            e => console.debug(`Net Device Info: cannot open Settings: ${e.message}`));
+        try {
+            Gio.DBus.session.call(
+                'org.gnome.Settings',
+                '/org/gnome/Settings',
+                'org.freedesktop.Application',
+                'ActivateAction',
+                new GLib.Variant('(sava{sv})',
+                    ['launch-panel', [param], platformData]),
+                null,
+                Gio.DBusCallFlags.NONE,
+                -1,
+                this._cancellable,
+                null);
+        } catch (e) {
+            console.debug(`Net Device Info: cannot open Settings: ${e.message}`);
+        }
     }
 
     destroy() {

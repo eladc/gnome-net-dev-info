@@ -3,6 +3,8 @@
   "name": "Net Device Info",
   "description": "Lists every physical network interface (wired and wireless, active or not) in the panel menu, each with its MAC address and IP addresses.\n\nClicking an interface copies its IP address (or its MAC address, if it has none) to the clipboard. The clipboard is only written on that click, and its contents are never read or shared.",
   "shell-version": [
+    "46",
+    "47",
     "48",
     "49"
   ],

@@ -14,7 +14,7 @@ wlp2s0                          Connected
   192.168.1.42
 ```
 
-Tested on GNOME Shell 48.7 (Wayland).
+Supports GNOME Shell 46 through 49. Tested on 48.7 (Wayland).
 
 ## What it shows
 
@@ -33,7 +33,7 @@ Tested on GNOME Shell 48.7 (Wayland).
 
 ## Requirements
 
-- GNOME Shell 48 or newer.
+- GNOME Shell 46 or newer.
 - NetworkManager — optional. Without it, `ip` from iproute2 is used instead.
 
 ## Install
@@ -87,6 +87,14 @@ the result. The output is cached for the life of the menu.
 current. Between openings the panel icon is kept in sync by NetworkManager's
 `device-added` / `device-removed` / `notify::primary-connection` signals and by
 `Gio.NetworkMonitor`'s `network-changed`. There are no timers.
+
+**Shell version differences (46 → 49).** Two APIs moved in that range. GNOME 48
+replaced `St.BoxLayout:vertical` with `:orientation`, and 46/47 only have the
+former, so the vertical boxes take their property from a `VERTICAL` constant
+picked off `Config.PACKAGE_VERSION` when the module loads. Opening the Settings
+network panel goes through the `org.freedesktop.Application` D-Bus interface —
+the same call GNOME Shell 46 made — rather than `Shell.App.activate_action()`,
+which arrived later. Nothing else in the extension differs across versions.
 
 ## Loading without logging out (Wayland)
 
