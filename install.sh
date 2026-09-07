@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install (or reinstall) the Show IP extension for the current user.
+# Install (or reinstall) the Net Device Info extension for the current user.
 set -euo pipefail
 
 UUID="gnome-net-dev-info@eladc.github.io"

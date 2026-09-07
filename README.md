@@ -1,4 +1,4 @@
-# Show IP
+# Net Device Info
 
 A GNOME Shell extension that puts a network icon in the panel. Click it and you
 get **every physical network interface** on the machine — wired and wireless,
@@ -141,7 +141,7 @@ reliable fix.** Two separate GJS/GObject limits stack up here:
    obvious fix for (1) — importing with a cache-busting `?t=<timestamp>` query
    string, which GJS *does* treat as a distinct module URL — fails one level
    deeper: the freshly re-executed module calls `GObject.registerClass()`
-   again with the same class name, which throws `Type name Gjs_ShowIpIndicator
+   again with the same class name, which throws `Type name Gjs_NetDevInfoIndicator
    is already registered`. Confirmed directly with a throwaway `gjs` script.
    If that throw isn't caught, the extension is left in a broken state (no
    icon, `gnome-extensions info` reports `State: UNKNOWN`) — worse than doing
@@ -184,8 +184,16 @@ The interface-detection and NetworkManager logic touches no Clutter or St, so it
 can be lifted into a standalone script and run under `gjs -m script.js` — much
 faster than restarting a shell.
 
-A reusable skill covering this workflow in general lives at
-`~/.claude/skills/gnome-shell-extension/SKILL.md`.
+## Packaging for extensions.gnome.org
+
+```sh
+gnome-extensions pack --force --extra-source=../LICENSE gnome-net-dev-info@eladc.github.io
+```
+
+Only the extension directory goes into the ZIP — `install.sh` and
+`dev-reload.sh` are development helpers and the review guidelines ask that build
+and install scripts stay out of the submission. `--extra-source` pulls the
+licence text in, since the ZIP is what users receive.
 
 ## Troubleshooting
 
@@ -196,3 +204,8 @@ journalctl -f -o cat /usr/bin/gnome-shell        # watch for errors while openin
 
 `OUT_OF_DATE` means `shell-version` in `metadata.json` does not list your shell's
 major version. `ERROR` means something threw — the traceback is in the log above.
+
+## License
+
+GPL-2.0-or-later — see [LICENSE](LICENSE). GNOME Shell itself is
+GPL-2.0-or-later, so extensions have to be distributed under compatible terms.

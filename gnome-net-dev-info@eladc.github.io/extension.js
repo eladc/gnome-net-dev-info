@@ -1,7 +1,16 @@
 /* extension.js
  *
- * Show IP - lists every physical network interface with its MAC and IP
- * addresses in the GNOME Shell panel.
+ * Net Device Info - lists every physical network interface with its MAC and
+ * IP addresses in the GNOME Shell panel.
+ *
+ * Copyright (C) 2026 eladc <eladco@gmail.com>
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ *
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the Free
+ * Software Foundation, either version 2 of the License, or (at your option)
+ * any later version. See the LICENSE file for the full text.
  */
 
 import Clutter from 'gi://Clutter';
@@ -9,6 +18,7 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import NM from 'gi://NM';
+import Shell from 'gi://Shell';
 import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -136,15 +146,16 @@ function nmAddresses(device) {
  * Indicator
  * ------------------------------------------------------------------ */
 
-const ShowIpIndicator = GObject.registerClass(
-class ShowIpIndicator extends PanelMenu.Button {
+const NetDevInfoIndicator = GObject.registerClass(
+class NetDevInfoIndicator extends PanelMenu.Button {
     _init(extension) {
-        super._init(0.5, _('Show IP'));
+        super._init(0.5, _('Net Device Info'));
 
         this._extension = extension;
         this._nmClient = null;
         this._nmHandlers = [];
         this._fallbackIps = null;
+        this._fallbackProc = null;
         this._cancellable = new Gio.Cancellable();
 
         this._icon = new St.Icon({
@@ -180,7 +191,7 @@ class ShowIpIndicator extends PanelMenu.Button {
                 this._nmClient = NM.Client.new_finish(res);
             } catch (e) {
                 if (!e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
-                    console.debug(`Show IP: NetworkManager unavailable: ${e.message}`);
+                    console.debug(`Net Device Info: NetworkManager unavailable: ${e.message}`);
                 return;
             }
 
@@ -316,7 +327,7 @@ class ShowIpIndicator extends PanelMenu.Button {
         if (copyable) {
             item.connect('activate', () => {
                 St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, copyable);
-                Main.notify(_('Show IP'), `${_('Copied to clipboard')}: ${copyable}`);
+                Main.notify(_('Net Device Info'), `${_('Copied to clipboard')}: ${copyable}`);
             });
         } else {
             item.setSensitive(false);
@@ -328,28 +339,25 @@ class ShowIpIndicator extends PanelMenu.Button {
     /* --- `ip addr` fallback -------------------------------------- */
 
     _fetchFallbackIps() {
-        if (this._fallbackPending)
+        if (this._fallbackProc)
             return;
-        this._fallbackPending = true;
 
-        let proc;
         try {
-            proc = Gio.Subprocess.new(['ip', '-json', 'addr', 'show'],
+            this._fallbackProc = Gio.Subprocess.new(['ip', '-json', 'addr', 'show'],
                 Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_SILENCE);
         } catch (e) {
-            this._fallbackPending = false;
-            console.debug(`Show IP: cannot run ip(8): ${e.message}`);
+            console.debug(`Net Device Info: cannot run ip(8): ${e.message}`);
             return;
         }
 
-        proc.communicate_utf8_async(null, this._cancellable, (source, res) => {
-            this._fallbackPending = false;
+        this._fallbackProc.communicate_utf8_async(null, this._cancellable, (source, res) => {
+            this._fallbackProc = null;
             let stdout;
             try {
                 [, stdout] = source.communicate_utf8_finish(res);
             } catch (e) {
                 if (!e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
-                    console.debug(`Show IP: ip(8) failed: ${e.message}`);
+                    console.debug(`Net Device Info: ip(8) failed: ${e.message}`);
                 return;
             }
 
@@ -367,7 +375,7 @@ class ShowIpIndicator extends PanelMenu.Button {
                     map.set(entry.ifname, {v4, v6});
                 }
             } catch (e) {
-                console.debug(`Show IP: cannot parse ip(8) output: ${e.message}`);
+                console.debug(`Net Device Info: cannot parse ip(8) output: ${e.message}`);
                 return;
             }
 
@@ -377,18 +385,29 @@ class ShowIpIndicator extends PanelMenu.Button {
         });
     }
 
+    /** Activate the Settings app's network panel the same way GNOME Shell's own
+     *  network menu does - no binary is spawned. */
     _openNetworkSettings() {
-        try {
-            Gio.Subprocess.new(['gnome-control-center', 'network'],
-                Gio.SubprocessFlags.NONE);
-        } catch (e) {
-            console.debug(`Show IP: cannot open Settings: ${e.message}`);
+        const app = Shell.AppSystem.get_default()
+            .lookup_app('org.gnome.Settings.desktop');
+        if (!app) {
+            console.debug('Net Device Info: GNOME Settings is not installed');
+            return;
         }
+
+        const param = new GLib.Variant('av',
+            [new GLib.Variant('(sav)', ['network', []])]);
+        app.activate_action('launch-panel', param, 0, -1, null).catch(
+            e => console.debug(`Net Device Info: cannot open Settings: ${e.message}`));
     }
 
     destroy() {
         this._cancellable?.cancel();
         this._cancellable = null;
+
+        // Cancelling the read above leaves ip(8) running; make it exit now.
+        this._fallbackProc?.force_exit();
+        this._fallbackProc = null;
 
         if (this._monitorId) {
             this._monitor.disconnect(this._monitorId);
@@ -408,9 +427,9 @@ class ShowIpIndicator extends PanelMenu.Button {
     }
 });
 
-export default class ShowIpExtension extends Extension {
+export default class NetDevInfoExtension extends Extension {
     enable() {
-        this._indicator = new ShowIpIndicator(this);
+        this._indicator = new NetDevInfoIndicator(this);
         Main.panel.addToStatusArea(this.uuid, this._indicator);
     }
 
