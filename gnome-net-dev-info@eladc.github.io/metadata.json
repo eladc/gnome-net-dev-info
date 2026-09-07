@@ -1,0 +1,11 @@
+{
+  "uuid": "gnome-net-dev-info@eladc.github.io",
+  "name": "Show IP",
+  "description": "Shows every physical network interface (wired and wireless, active or not) in the panel with its MAC address and IP addresses. Click an interface to copy its address.",
+  "shell-version": [
+    "48",
+    "49"
+  ],
+  "version-name": "1.0",
+  "url": "https://github.com/eladc/show-ip-gnome"
+}

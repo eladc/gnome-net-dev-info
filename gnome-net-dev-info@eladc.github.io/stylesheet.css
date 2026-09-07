@@ -1,0 +1,49 @@
+.gnome-net-dev-info-item {
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+
+.gnome-net-dev-info-iface {
+    font-weight: bold;
+    padding-left: 6px;
+}
+
+.gnome-net-dev-info-state {
+    font-size: 0.85em;
+    padding-left: 12px;
+}
+
+.gnome-net-dev-info-up {
+    color: #8ff0a4;
+}
+
+.gnome-net-dev-info-down {
+    color: #c0bfbc;
+}
+
+.gnome-net-dev-info-details {
+    padding-left: 22px;
+    padding-top: 2px;
+}
+
+.gnome-net-dev-info-mac {
+    font-family: monospace;
+    font-size: 0.9em;
+    color: #c0bfbc;
+}
+
+.gnome-net-dev-info-addr {
+    font-family: monospace;
+    font-size: 0.95em;
+}
+
+.gnome-net-dev-info-addr6 {
+    font-size: 0.85em;
+    color: #c0bfbc;
+}
+
+.gnome-net-dev-info-empty {
+    font-size: 0.85em;
+    font-style: italic;
+    color: #9a9996;
+}
